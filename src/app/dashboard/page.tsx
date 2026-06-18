@@ -73,20 +73,29 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // 一時的に認証をスキップ
+    if (status === 'loading') return
+    if (status === 'unauthenticated') {
+      router.replace('/auth/signin?callbackUrl=/dashboard')
+      return
+    }
     fetchDashboardData()
-  }, [])
+  }, [status, router])
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true)
-      
+
       const [statsRes, usageRes, requestsRes, modelsRes] = await Promise.all([
         fetch('/api/dashboard/stats'),
         fetch('/api/dashboard/usage'),
         fetch('/api/dashboard/requests'),
         fetch('/api/dashboard/models'),
       ])
+
+      if ([statsRes, usageRes, requestsRes, modelsRes].some((res) => res.status === 401)) {
+        router.replace('/auth/signin?callbackUrl=/dashboard')
+        return
+      }
 
       const [statsData, usageData, requestsData, modelsData] = await Promise.all([
         statsRes.json(),
@@ -106,7 +115,7 @@ export default function DashboardPage() {
     }
   }
 
-  if (loading) {
+  if (status === 'loading' || status === 'unauthenticated' || loading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />

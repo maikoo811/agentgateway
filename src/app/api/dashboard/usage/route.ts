@@ -1,20 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { authenticateSession } from '@/lib/auth-helpers'
+import { sanitizeError } from '@/lib/api-utils'
+import { AuthenticationError } from '@/lib/errors'
 import prisma from '@/lib/prisma'
 
 export async function GET(req: NextRequest) {
   try {
-    // 一時的に認証をスキップ
-    const userId = 'demo-user-id'
+    const auth = await authenticateSession(req)
+    const userId = auth.userId
 
-    // 期間を取得（デフォルトは過去7日）
     const { searchParams } = new URL(req.url)
     const days = parseInt(searchParams.get('days') || '7')
     const startDate = new Date()
-    startDate.getDate() - days
+    startDate.setDate(startDate.getDate() - days)
 
-    // 日別のリクエスト数を取得
     const usageData = await prisma.$queryRaw`
       SELECT 
         DATE(createdAt) as date,
@@ -26,27 +25,28 @@ export async function GET(req: NextRequest) {
       ORDER BY date ASC
     `
 
-    // 日付の配列を生成してデータを補完
     const result = []
     for (let i = 0; i < days; i++) {
       const date = new Date()
       date.setDate(date.getDate() - (days - 1 - i))
       const dateStr = date.toISOString().split('T')[0]
-      
-      const dayData = (usageData as any[]).find(d => d.date === dateStr)
+
+      const dayData = (usageData as Array<{ date: string; requests: bigint | number }>).find(
+        (d) => d.date === dateStr
+      )
       result.push({
         date: date.toLocaleDateString('en-US', { weekday: 'short' }),
-        requests: dayData ? parseInt(dayData.requests) : 0,
+        requests: dayData ? Number(dayData.requests) : 0,
       })
     }
 
     return NextResponse.json(result)
-
   } catch (error) {
+    if (error instanceof AuthenticationError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
+
     console.error('Dashboard Usage Error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: sanitizeError(error) }, { status: 500 })
   }
 }
