@@ -48,3 +48,8 @@ next-env.d.ts
 *.swp
 *.swo
 *~
+
+# Token Ops local files
+.token-ops/
+.claude/settings.local.json
+.claude/skills/token-ops/SKILL.md
