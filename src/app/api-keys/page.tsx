@@ -42,14 +42,22 @@ export default function ApiKeysPage() {
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
   useEffect(() => {
-    // 一時的に認証をスキップ
+    if (status === 'loading') return
+    if (status === 'unauthenticated') {
+      router.replace('/auth/signin?callbackUrl=/api-keys')
+      return
+    }
     fetchApiKeys()
-  }, [])
+  }, [status, router])
 
   const fetchApiKeys = async () => {
     try {
       setLoading(true)
       const response = await fetch('/api/api-keys')
+      if (response.status === 401) {
+        router.replace('/auth/signin?callbackUrl=/api-keys')
+        return
+      }
       const data = await response.json()
       setApiKeys(data.apiKeys)
     } catch (error) {
@@ -134,7 +142,7 @@ export default function ApiKeysPage() {
     }
   }
 
-  if (loading) {
+  if (status === 'loading' || status === 'unauthenticated' || loading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
