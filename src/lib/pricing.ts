@@ -1,7 +1,12 @@
 /**
  * LLM API Pricing Configuration
- * 価格は1000トークンあたりのUSD
+ * 価格は1000トークンあたりのUSD（Anthropicのみ100万トークン単位）
  */
+
+type ModelPricing = {
+  input: number
+  output: number
+}
 
 export const MODEL_PRICING = {
   openai: {
@@ -16,19 +21,28 @@ export const MODEL_PRICING = {
     'claude-3-5-haiku-20241022': { input: 1.0, output: 5.0 },
     'claude-3-opus-20240229': { input: 15.0, output: 75.0 },
   },
-} as const
+} as const satisfies Record<string, Record<string, ModelPricing>>
 
 export type Provider = keyof typeof MODEL_PRICING
 export type OpenAIModel = keyof typeof MODEL_PRICING.openai
 export type AnthropicModel = keyof typeof MODEL_PRICING.anthropic
 
+function getModelPricing(provider: Provider, model: string): ModelPricing {
+  const providerPricing = MODEL_PRICING[provider]
+
+  if (model in providerPricing) {
+    return providerPricing[model as keyof typeof providerPricing]
+  }
+
+  console.warn(`Unknown model: ${provider}/${model}, using default pricing`)
+  if (provider === 'openai') {
+    return MODEL_PRICING.openai['gpt-3.5-turbo']
+  }
+  return MODEL_PRICING.anthropic['claude-3-5-haiku-20241022']
+}
+
 /**
  * Calculate cost based on token usage
- * @param provider - 'openai' or 'anthropic'
- * @param model - Model name
- * @param inputTokens - Number of input tokens
- * @param outputTokens - Number of output tokens
- * @returns Cost in USD
  */
 export function calculateCost(
   provider: Provider,
@@ -36,29 +50,12 @@ export function calculateCost(
   inputTokens: number,
   outputTokens: number
 ): number {
-  const providerPricing = MODEL_PRICING[provider]
-
-  if (!providerPricing || !(model in providerPricing)) {
-    console.warn(`Unknown model: ${provider}/${model}, using default pricing`)
-    // デフォルト価格を使用
-    const defaultModel = provider === 'openai' ? 'gpt-3.5-turbo' : 'claude-3-5-haiku-20241022'
-    const pricing = providerPricing[defaultModel as keyof typeof providerPricing]
-
-    if (provider === 'anthropic') {
-      // Anthropicは100万トークン単位の価格
-      return (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000
-    }
-    return (inputTokens * pricing.input + outputTokens * pricing.output) / 1000
-  }
-
-  const pricing = providerPricing[model as keyof typeof providerPricing]
+  const pricing = getModelPricing(provider, model)
 
   if (provider === 'anthropic') {
-    // Anthropicは100万トークン単位の価格
     return (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000
   }
 
-  // OpenAIは1000トークン単位の価格
   return (inputTokens * pricing.input + outputTokens * pricing.output) / 1000
 }
 

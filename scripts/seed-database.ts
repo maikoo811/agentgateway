@@ -163,7 +163,6 @@ async function main() {
         avgResponseTime: 760,
       },
     ],
-    skipDuplicates: true,
   });
 
   console.log('✅ Created usage statistics');
