@@ -7,7 +7,7 @@ import { AuthenticationError, ExternalApiError } from '@/lib/errors'
 // Anthropic API プロキシ
 export async function POST(req: NextRequest) {
   const startTime = Date.now()
-  let userId: string
+  let userId: string | undefined
   let apiKeyId: string | undefined
 
   try {

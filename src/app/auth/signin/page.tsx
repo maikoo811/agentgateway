@@ -1,10 +1,11 @@
 'use client'
 
+import { Suspense } from 'react'
 import { signIn } from 'next-auth/react'
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-export default function SignInPage() {
+function SignInForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -51,9 +52,8 @@ export default function SignInPage() {
             アカウントにサインインしてください
           </p>
         </div>
-        
+
         <div className="mt-8 space-y-6">
-          {/* OAuth Providers */}
           <div className="space-y-3">
             <button
               onClick={() => handleOAuthSignIn('github')}
@@ -62,7 +62,7 @@ export default function SignInPage() {
             >
               GitHubでサインイン
             </button>
-            
+
             <button
               onClick={() => handleOAuthSignIn('google')}
               disabled={isLoading}
@@ -81,7 +81,6 @@ export default function SignInPage() {
             </div>
           </div>
 
-          {/* Credentials Form */}
           <form className="mt-8 space-y-6" onSubmit={handleCredentialsSignIn}>
             <div className="rounded-md shadow-sm -space-y-px">
               <div>
@@ -140,5 +139,19 @@ export default function SignInPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <p className="text-sm text-gray-600">読み込み中...</p>
+        </div>
+      }
+    >
+      <SignInForm />
+    </Suspense>
   )
 }
